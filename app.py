@@ -17,9 +17,10 @@ def load_model():
     """
     return pipeline(
         "text-generation",
-        model="facebook/opt-125m",  # A small model suitable for demonstrations
-        torch_dtype="auto",
-        device="cpu"
+        model="facebook/opt-125m",
+        device="cpu",
+        model_kwargs={"low_cpu_mem_usage": True},
+        torch_dtype="auto"
     )
 
 # Custom CSS for better appearance

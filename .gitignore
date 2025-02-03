@@ -5,7 +5,12 @@ __pycache__/
 .Python
 env/
 venv/
+cksAsst/
 .env
+*.so
+dist/
+build/
+*.egg-info/
 
 # IDE
 .vscode/
@@ -13,3 +18,7 @@ venv/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Misc
+*.log
+.DS_Store
