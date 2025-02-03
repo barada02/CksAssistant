@@ -1,5 +1,6 @@
 import streamlit as st
-from transformers import pipeline
+import transformers
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # Page configuration
 st.set_page_config(
@@ -12,16 +13,35 @@ st.set_page_config(
 @st.cache_resource
 def load_model():
     """
-    Load the language model using Hugging Face's pipeline.
+    Load the language model using Hugging Face's AutoModel.
     This function is cached to prevent reloading on every run.
     """
-    return pipeline(
-        "text-generation",
-        model="facebook/opt-125m",
-        device="cpu",
-        model_kwargs={"low_cpu_mem_usage": True},
-        torch_dtype="auto"
-    )
+    try:
+        model_name = "facebook/opt-125m"
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            low_cpu_mem_usage=True,
+            torch_dtype="auto",
+            device_map="cpu"
+        )
+        
+        def generate_text(prompt, max_length=100):
+            inputs = tokenizer(prompt, return_tensors="pt")
+            outputs = model.generate(
+                inputs.input_ids,
+                max_length=max_length,
+                num_return_sequences=1,
+                temperature=0.7,
+                top_p=0.9,
+                pad_token_id=tokenizer.eos_token_id
+            )
+            return tokenizer.decode(outputs[0], skip_special_tokens=True)
+        
+        return generate_text
+    except Exception as e:
+        st.error(f"Error loading model: {str(e)}")
+        return None
 
 # Custom CSS for better appearance
 st.markdown("""
@@ -63,24 +83,19 @@ if prompt := st.chat_input("What's on your mind?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
 
     # Generate AI response
-    with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
-            # Generate response using the model
-            response = model(
-                prompt,
-                max_length=100,
-                num_return_sequences=1,
-                temperature=0.7,
-                top_p=0.9,
-            )[0]["generated_text"]
-            
-            # Clean up the response by removing the input prompt
-            response = response.replace(prompt, "").strip()
-            
-            st.markdown(response)
-    
-    # Add assistant response to chat history
-    st.session_state.messages.append({"role": "assistant", "content": response})
+    if model:
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                # Generate response using the model
+                response = model(prompt, max_length=100)
+                
+                # Clean up the response by removing the input prompt
+                response = response.replace(prompt, "").strip()
+                
+                st.markdown(response)
+        
+        # Add assistant response to chat history
+        st.session_state.messages.append({"role": "assistant", "content": response})
 
 # Add a sidebar with information
 with st.sidebar:
